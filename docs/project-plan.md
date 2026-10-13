@@ -567,15 +567,15 @@ Every phase ends with the app running, tests passing and a commit pushed. Estima
 
 This phase de-risks the most important thing in the project first.
 
-- [ ] Write the Drizzle schema for the three tables and enums, with check constraints and indexes
-- [ ] Generate the first migration; add a hand-written migration for `btree_gist` and `reservations_no_overlap`
-- [ ] `db:migrate` and `db:reset` scripts
-- [ ] Install Vitest; test database setup (migrate once, truncate per test)
-- [ ] Integration tests, group A (constraint on its own), including the two-connection concurrent test
-- [ ] `server/errors.ts`: `DomainError`, `mapDbError`; test that real `23P01` and `23505` errors are recognized through the ORM
-- [ ] Seed script (section 8.4)
+- [x] Write the Drizzle schema for the three tables and enums, with check constraints and indexes
+- [x] Generate the first migration; add a hand-written migration for `btree_gist` and `reservations_no_overlap`
+- [x] `db:migrate` and `db:reset` scripts
+- [x] Install Vitest; test database setup (migrate once, truncate per test)
+- [x] Integration tests, group A (constraint on its own), including the two-connection concurrent test
+- [x] `server/errors.ts`: `DomainError`, `mapDbError`; test that real `23P01` and `23505` errors are recognized through the ORM
+- [x] Seed script (section 8.4)
 - [ ] Paste the DBML into dbdiagram.io and check it matches the migration [CUT-6: can move to Phase 7]
-- [ ] **Done when:** `npm test` is green and the seeded data is visible in the database. Commit: *feat: schema with database-level overlap prevention and seed data*
+- [x] **Done when:** `npm test` is green and the seeded data is visible in the database. Commit: *feat: schema with database-level overlap prevention and seed data*
 
 ### Phase 2: Authentication and roles (2 h, hard timebox)
 

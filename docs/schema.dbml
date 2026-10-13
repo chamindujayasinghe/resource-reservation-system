@@ -1,0 +1,93 @@
+// Source for the ER diagram. Paste into https://dbdiagram.io
+// The real schema is defined by the migrations in drizzle/. DBML cannot
+// express exclusion or check constraints, so they are recorded as notes.
+
+Project resource_reservation_system {
+  database_type: 'PostgreSQL'
+  Note: 'Resource Reservation Management System. All timestamps are timestamptz (stored in UTC, displayed in Asia/Colombo).'
+}
+
+Enum user_role {
+  admin
+  member
+}
+
+Enum resource_type {
+  room
+  equipment
+  vehicle
+  other
+}
+
+Enum reservation_status {
+  confirmed
+  cancelled
+}
+
+Table users {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text [not null]
+  email text [not null, unique, note: 'Stored lowercase. CHECK (email = lower(email))']
+  password_hash text [not null, note: 'bcrypt hash, never plain text']
+  role user_role [not null, default: 'member']
+  created_at timestamptz [not null, default: `now()`]
+
+  Note: 'Seeded accounts only. No self-registration.'
+}
+
+Table resources {
+  id uuid [pk, default: `gen_random_uuid()`]
+  name text [not null, note: 'Unique ignoring case. CHECK (char_length(name) BETWEEN 1 AND 100)']
+  type resource_type [not null]
+  location text [not null]
+  capacity integer [note: 'Optional. CHECK (capacity > 0). Descriptive only: one reservation always holds the whole resource']
+  description text
+  is_active boolean [not null, default: true, note: 'Inactive resources are hidden from members and cannot be booked']
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (`lower(name)`) [unique, name: 'resources_name_unique']
+  }
+
+  Note: 'Never hard-deleted, only deactivated, so reservation history is preserved.'
+}
+
+Table reservations {
+  id uuid [pk, default: `gen_random_uuid()`]
+  resource_id uuid [not null]
+  user_id uuid [not null, note: 'Owner: the user who created the reservation']
+  title text [not null, note: 'CHECK (char_length(title) BETWEEN 3 AND 100)']
+  attendee_count integer [note: 'Optional. CHECK (attendee_count > 0)']
+  start_at timestamptz [not null]
+  end_at timestamptz [not null, note: 'CHECK (end_at > start_at)']
+  status reservation_status [not null, default: 'confirmed']
+  cancelled_at timestamptz
+  cancelled_by uuid
+  cancellation_reason text
+  created_at timestamptz [not null, default: `now()`]
+  updated_at timestamptz [not null, default: `now()`]
+
+  indexes {
+    (resource_id, start_at) [name: 'reservations_resource_start_idx']
+    (user_id, start_at) [name: 'reservations_user_start_idx']
+    start_at [name: 'reservations_start_idx']
+  }
+
+  Note: '''
+  NO DOUBLE BOOKING (exclusion constraint reservations_no_overlap, requires btree_gist):
+  EXCLUDE USING gist (resource_id WITH =, tstzrange(start_at, end_at, '[)') WITH &&)
+  WHERE (status = 'confirmed')
+
+  Two confirmed reservations for the same resource can never overlap.
+  Ranges are half-open, so back-to-back reservations are allowed.
+  Cancelled reservations do not block a slot.
+
+  CHECK: cancelled_at and cancelled_by are set if and only if status = 'cancelled'.
+  Reservations are never deleted, only cancelled.
+  '''
+}
+
+Ref reservations_resource_fk: reservations.resource_id > resources.id [delete: restrict]
+Ref reservations_owner_fk: reservations.user_id > users.id [delete: restrict]
+Ref reservations_cancelled_by_fk: reservations.cancelled_by > users.id [delete: restrict]

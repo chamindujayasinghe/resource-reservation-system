@@ -16,3 +16,17 @@ Short log of non-obvious technical choices. Newest last.
 - **Alternative considered:** Keep it on and wrap each page's data access in
   `<Suspense>`. Rejected: more structure on every page for a performance gain
   the app does not need.
+
+## 2. Tests reach the test database through `DATABASE_URL`
+
+- **Date:** 13 Oct 2026
+- **Decision:** `vitest.config.mts` sets `DATABASE_URL` to the value of
+  `DATABASE_URL_TEST` for test code, so the one shared client in
+  `src/server/db/client.ts` connects to `reservations_test`. As a second
+  safeguard, the test helper that truncates tables first checks that the
+  connected database's name ends in `_test`.
+- **Reason:** Application code needs no knowledge of tests, and integration
+  tests exercise the exact client and migrations the app uses.
+- **Alternative considered:** Pass a database handle into every service
+  function. Rejected: extra plumbing through every call for no gain at this
+  size.
