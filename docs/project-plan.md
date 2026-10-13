@@ -579,13 +579,13 @@ This phase de-risks the most important thing in the project first.
 
 ### Phase 2: Authentication and roles (2 h, hard timebox)
 
-- [ ] Auth.js configuration: Credentials provider, bcrypt comparison, JWT session with `id` and `role`
-- [ ] `getCurrentUser`, `requireUser`, `requireAdmin`
-- [ ] Login page and `signInAction` with one generic error; `signOutAction`
-- [ ] `(app)` layout: header, role-aware navigation, user name, sign out
-- [ ] `/` redirect; signed-in users redirected away from `/login`
-- [ ] Placeholder admin page proving that a member gets not-found
-- [ ] **Done when:** both seeded roles can sign in and out, and a member cannot open the admin page. Commit: *feat: credentials sign-in with role-based access*
+- [x] Auth.js configuration: Credentials provider, bcrypt comparison, JWT session with `id` and `role`
+- [x] `getCurrentUser`, `requireUser`, `requireAdmin`
+- [x] Login page and `signInAction` with one generic error; `signOutAction`
+- [x] `(app)` layout: header, role-aware navigation, user name, sign out
+- [x] `/` redirect; signed-in users redirected away from `/login`
+- [x] Placeholder admin page proving that a member gets not-found
+- [x] **Done when:** both seeded roles can sign in and out, and a member cannot open the admin page. Commit: *feat: credentials sign-in with role-based access*
 - [ ] **If not working after 2 h:** switch to the fallback in R1
 
 ### Phase 3: Resources (2.5 h)

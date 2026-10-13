@@ -30,3 +30,21 @@ Short log of non-obvious technical choices. Newest last.
 - **Alternative considered:** Pass a database handle into every service
   function. Rejected: extra plumbing through every call for no gain at this
   size.
+
+## 3. Auth.js v5, although it is still labelled beta
+
+- **Date:** 14 Oct 2026
+- **Decision:** Use `next-auth@5.0.0-beta.32` (Credentials provider, JWT
+  session in an encrypted HTTP-only cookie) for sign-in.
+- **Reason:** Authentication is security-sensitive and is not the business
+  problem, so a maintained library handles cookie encryption, CSRF protection
+  and session expiry. v5 is the line built for the App Router, declares support
+  for Next.js 16, and was last released in July 2026. The stable v4 predates
+  the Server Component and Server Action patterns this application uses.
+  Application code only depends on three helpers (`getCurrentUser`,
+  `requireUser`, `requireAdmin`), and services take the acting user as a
+  parameter, so the library can be replaced by changing two files.
+- **Alternative considered:** A hand-written signed session cookie using
+  `jose`. Kept as the fallback had Auth.js not worked within a two-hour
+  timebox; not needed. Rejected as the first choice because hand-rolled
+  session handling is easy to get subtly wrong.

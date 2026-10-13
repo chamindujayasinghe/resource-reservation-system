@@ -16,6 +16,7 @@ import {
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
 
 export const userRole = pgEnum("user_role", ["admin", "member"]);
+export type UserRole = (typeof userRole.enumValues)[number];
 
 export const resourceType = pgEnum("resource_type", [
   "room",
