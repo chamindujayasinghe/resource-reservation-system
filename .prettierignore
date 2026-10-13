@@ -1,0 +1,8 @@
+# generated files
+package-lock.json
+.next
+next-env.d.ts
+drizzle/meta
+
+# documents: keep hand-formatted tables as written
+*.md

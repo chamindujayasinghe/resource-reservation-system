@@ -552,16 +552,16 @@ Every phase ends with the app running, tests passing and a commit pushed. Estima
 
 ### Phase 0: Project skeleton (1.5 h)
 
-- [ ] Confirm the flagged decisions in section 0
-- [ ] `git init`, `.gitignore` (including `.env` and, per F6, the brief PDF), first commit containing the two docs
-- [ ] Create the GitHub repository and push
-- [ ] Scaffold Next.js with TypeScript, App Router, Tailwind, ESLint, `src/` directory; enable TypeScript strict mode
-- [ ] Add Prettier; add `lint`, `typecheck` and `format` scripts
-- [ ] Initialize shadcn/ui; add button, input, label, select, card, table, dialog, badge, alert, sonner
-- [ ] `docker-compose.yml`, `docker/init-test-db.sql`, `.env.example`, local `.env`
-- [ ] Install Drizzle, `pg`, `drizzle-kit`, `tsx`; create the DB client
-- [ ] Home page shows "Database connected" from a trivial query
-- [ ] **Done when:** `docker compose up -d` and `npm run dev` show the connected page. Commit: *chore: project skeleton with database connection*
+- [x] Confirm the flagged decisions in section 0
+- [x] `git init`, `.gitignore` (including `.env` and, per F6, the brief PDF), first commit containing the two docs
+- [x] Create the GitHub repository and push
+- [x] Scaffold Next.js with TypeScript, App Router, Tailwind, ESLint, `src/` directory; enable TypeScript strict mode
+- [x] Add Prettier; add `lint`, `typecheck` and `format` scripts
+- [x] Initialize shadcn/ui; add button, input, label, select, card, table, dialog, badge, alert, sonner
+- [x] `docker-compose.yml`, `docker/init-test-db.sql`, `.env.example`, local `.env`
+- [x] Install Drizzle, `pg`, `drizzle-kit`, `tsx`; create the DB client
+- [x] Home page shows "Database connected" from a trivial query
+- [x] **Done when:** `docker compose up -d` and `npm run dev` show the connected page. Commit: *chore: project skeleton with database connection*
 
 ### Phase 1: Schema, constraint, seed (2 h)
 
