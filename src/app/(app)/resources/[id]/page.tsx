@@ -182,7 +182,11 @@ export default async function ResourcePage({
                 // A new key per day resets the form when the day changes.
                 key={date}
                 action={createReservationAction.bind(null, resource.id)}
-                defaultDate={date < today ? today : date}
+                initialValues={{ date: date < today ? today : date }}
+                capacity={resource.capacity}
+                submitLabel="Book"
+                pendingLabel="Booking..."
+                successMessage="Reservation confirmed."
                 minDate={today}
                 maxDate={addCalendarDays(today, MAX_ADVANCE_DAYS)}
                 startTimes={slots.slice(0, -1)}

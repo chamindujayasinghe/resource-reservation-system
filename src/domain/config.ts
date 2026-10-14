@@ -19,3 +19,7 @@ export const MAX_DURATION_MINUTES = 8 * 60;
 
 // BR7: how far ahead a reservation may start, in calendar days.
 export const MAX_ADVANCE_DAYS = 60;
+
+// Upper bound for a resource's capacity (BR14) and a reservation's attendee
+// count (BR16): a larger group could never fit anyway.
+export const MAX_CAPACITY = 10_000;

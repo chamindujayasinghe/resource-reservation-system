@@ -41,10 +41,18 @@ export default async function MyReservationsPage() {
               {inProgress ? (
                 <Badge variant="secondary">In progress</Badge>
               ) : (
-                <CancelReservationDialog
-                  action={cancelReservationAction.bind(null, reservation.id)}
-                  summary={describe(reservation)}
-                />
+                <div className="flex gap-2">
+                  <Button asChild variant="outline" size="sm">
+                    <Link href={`/reservations/${reservation.id}/edit`}>
+                      Edit
+                      <span className="sr-only"> {describe(reservation)}</span>
+                    </Link>
+                  </Button>
+                  <CancelReservationDialog
+                    action={cancelReservationAction.bind(null, reservation.id)}
+                    summary={describe(reservation)}
+                  />
+                </div>
               )}
             </ReservationItem>
           );

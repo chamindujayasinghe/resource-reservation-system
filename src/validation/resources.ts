@@ -1,8 +1,7 @@
 import { z } from "zod";
 
+import { MAX_CAPACITY } from "@/domain/config";
 import { resourceType } from "@/server/db/schema";
-
-const MAX_CAPACITY = 10_000;
 
 // Empty text inputs arrive as "", which the database should store as null.
 const emptyToNull = (value: string) => (value === "" ? null : value);

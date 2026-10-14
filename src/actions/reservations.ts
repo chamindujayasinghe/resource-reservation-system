@@ -7,6 +7,7 @@ import { requireUser } from "@/server/auth/session";
 import {
   cancelReservation,
   createReservation,
+  updateReservation,
 } from "@/server/services/reservations";
 import {
   cancellationReasonSchema,
@@ -22,7 +23,13 @@ import {
   type ActionState,
 } from "./action-state";
 
-const RESERVATION_FIELDS = ["date", "start", "end", "title"] as const;
+const RESERVATION_FIELDS = [
+  "date",
+  "start",
+  "end",
+  "title",
+  "attendeeCount",
+] as const;
 
 export type CreateReservationState = ActionState<{ id: string }>;
 
@@ -66,6 +73,47 @@ export async function createReservationAction(
   }
 }
 
+export type UpdateReservationState = ActionState<{ id: string }>;
+
+// S1. The page binds the reservation id. The service checks ownership; the
+// resource cannot be changed, so the form has no field for it.
+export async function updateReservationAction(
+  reservationId: string,
+  _previous: UpdateReservationState,
+  formData: FormData,
+): Promise<UpdateReservationState> {
+  const actor = await requireUser();
+  const values = readFormValues(formData, RESERVATION_FIELDS);
+
+  const parsedId = reservationIdSchema.safeParse(reservationId);
+  if (!parsedId.success) {
+    return {
+      ok: false,
+      error: { message: "That reservation does not exist.", values },
+    };
+  }
+
+  const parsed = reservationInputSchema.safeParse(values);
+  if (!parsed.success) {
+    return validationFailure(parsed.error, values);
+  }
+
+  try {
+    const reservation = await updateReservation(
+      actor,
+      parsedId.data,
+      parsed.data,
+    );
+    revalidateAfterChange();
+    return { ok: true, data: { id: reservation.id } };
+  } catch (error) {
+    // The slot may have been taken, or the reservation cancelled, since the
+    // page loaded.
+    revalidateAfterChange();
+    return domainFailure(error, values);
+  }
+}
+
 export type CancelReservationState = ActionState;
 
 // M9. The page binds the reservation id. The form carries no fields, so the
@@ -85,12 +133,12 @@ export async function cancelReservationAction(
 
   try {
     await cancelReservation(actor, parsedId.data);
-    revalidateAfterCancel();
+    revalidateAfterChange();
     return { ok: true, data: undefined };
   } catch (error) {
     // "Already cancelled" or "already started" means the page was out of
     // date, so refresh it as well.
-    revalidateAfterCancel();
+    revalidateAfterChange();
     return domainFailure(error, {});
   }
 }
@@ -124,17 +172,18 @@ export async function adminCancelReservationAction(
     await cancelReservation(actor, parsedId.data, {
       reason: parsed.data.reason,
     });
-    revalidateAfterCancel();
+    revalidateAfterChange();
     return { ok: true, data: undefined };
   } catch (error) {
-    revalidateAfterCancel();
+    revalidateAfterChange();
     return domainFailure(error, values);
   }
 }
 
-// Both reservation lists and every resource schedule: the freed slot must
-// show as free wherever it is displayed.
-function revalidateAfterCancel(): void {
+// After an edit or a cancel: both reservation lists and every resource
+// schedule, so a freed or newly taken slot shows correctly wherever it is
+// displayed.
+function revalidateAfterChange(): void {
   revalidatePath("/reservations");
   revalidatePath("/admin/reservations");
   revalidatePath("/resources/[id]", "page");

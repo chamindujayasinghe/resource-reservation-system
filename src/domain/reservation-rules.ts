@@ -124,6 +124,20 @@ export function checkReservationTimes(
   return { ok: true, startAt, endAt };
 }
 
+// BR16 (S2): the group must fit. Nothing to check when no count was given
+// or the resource has no capacity. Returns the message to show, or null.
+export function checkAttendeeCount(
+  attendeeCount: number | null,
+  capacity: number | null,
+): string | null {
+  if (attendeeCount === null || capacity === null) {
+    return null;
+  }
+  return attendeeCount > capacity
+    ? `This resource holds at most ${capacity} people.`
+    : null;
+}
+
 // BR22: a reservation can be changed or cancelled only before it starts.
 export function hasStarted(startAt: Date, now: Date): boolean {
   return startAt.getTime() <= now.getTime();

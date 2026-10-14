@@ -1,21 +1,38 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 
-import type { CreateReservationState } from "@/actions/reservations";
+import type { ActionState } from "@/actions/action-state";
 import { FormField } from "@/components/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NativeSelect } from "@/components/ui/native-select";
 
+type ReservationFormState = ActionState<{ id: string }>;
+
+// Used to book (M6) and to edit (S1) a reservation.
 type BookingFormProps = {
   action: (
-    previous: CreateReservationState,
+    previous: ReservationFormState,
     formData: FormData,
-  ) => Promise<CreateReservationState>;
-  defaultDate: string;
+  ) => Promise<ReservationFormState>;
+  initialValues: {
+    date: string;
+    start?: string;
+    end?: string;
+    title?: string;
+    attendeeCount?: string;
+  };
+  // Shown as a hint only; the server checks the count (BR16).
+  capacity: number | null;
+  submitLabel: string;
+  pendingLabel: string;
+  successMessage: string;
+  // Where to go after success. Without it the form stays on the page.
+  successHref?: string;
   // Limits for the date picker. A convenience only: the server applies the
   // real rules (BR2, BR7).
   minDate: string;
@@ -25,11 +42,16 @@ type BookingFormProps = {
   timeZoneLabel: string;
 };
 
-type Field = "date" | "start" | "end" | "title";
+type Field = "date" | "start" | "end" | "title" | "attendeeCount";
 
 export function BookingForm({
   action,
-  defaultDate,
+  initialValues,
+  capacity,
+  submitLabel,
+  pendingLabel,
+  successMessage,
+  successHref,
   minDate,
   maxDate,
   startTimes,
@@ -37,20 +59,25 @@ export function BookingForm({
   timeZoneLabel,
 }: BookingFormProps) {
   const [state, formAction, isPending] = useActionState(action, null);
+  const router = useRouter();
 
   useEffect(() => {
     if (state?.ok) {
-      toast.success("Reservation confirmed.");
+      toast.success(successMessage);
+      if (successHref) {
+        router.push(successHref);
+      }
     }
-  }, [state]);
+  }, [state, successMessage, successHref, router]);
 
   const error = state && !state.ok ? state.error : undefined;
   // After a refusal, keep what the user chose (M6: input is preserved).
   const values = {
-    date: defaultDate,
     start: "",
     end: "",
     title: "",
+    attendeeCount: "",
+    ...initialValues,
     ...error?.values,
   };
   const fieldError = (field: Field) => error?.fieldErrors?.[field];
@@ -142,8 +169,35 @@ export function BookingForm({
         />
       </FormField>
 
+      <FormField
+        label="Attendees"
+        htmlFor="attendeeCount"
+        hint={
+          capacity === null
+            ? "Optional."
+            : `Optional. Holds up to ${capacity} people.`
+        }
+        error={fieldError("attendeeCount")}
+      >
+        <Input
+          id="attendeeCount"
+          name="attendeeCount"
+          type="number"
+          inputMode="numeric"
+          min={1}
+          step={1}
+          defaultValue={values.attendeeCount}
+          aria-invalid={Boolean(fieldError("attendeeCount"))}
+          aria-describedby={
+            fieldError("attendeeCount")
+              ? "attendeeCount-error"
+              : "attendeeCount-hint"
+          }
+        />
+      </FormField>
+
       <Button type="submit" disabled={isPending}>
-        {isPending ? "Booking..." : "Book"}
+        {isPending ? pendingLabel : submitLabel}
       </Button>
     </form>
   );

@@ -1,6 +1,10 @@
-import { and, asc, eq, gt, lt } from "drizzle-orm";
+import { and, asc, eq, gt, lt, ne } from "drizzle-orm";
 
-import { checkReservationTimes, hasStarted } from "@/domain/reservation-rules";
+import {
+  checkAttendeeCount,
+  checkReservationTimes,
+  hasStarted,
+} from "@/domain/reservation-rules";
 import { dayBoundsUtc, formatTime } from "@/domain/time";
 import { db } from "@/server/db/client";
 import { reservations, resources, users } from "@/server/db/schema";
@@ -45,6 +49,54 @@ async function withOneRetry<T>(operation: () => Promise<T>): Promise<T> {
 const overlapsRange = (startAt: Date, endAt: Date) =>
   and(lt(reservations.startAt, endAt), gt(reservations.endAt, startAt));
 
+type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
+
+// For a helpful message only. The guarantee is the exclusion constraint,
+// which refuses the write even if this check is ever skipped. An edited
+// reservation passes its own id, so it never conflicts with itself (BR24).
+async function assertNoConflict(
+  tx: Transaction,
+  resourceId: string,
+  startAt: Date,
+  endAt: Date,
+  ignoreId?: string,
+): Promise<void> {
+  const [conflict] = await tx
+    .select({
+      startAt: reservations.startAt,
+      endAt: reservations.endAt,
+    })
+    .from(reservations)
+    .where(
+      and(
+        eq(reservations.resourceId, resourceId),
+        eq(reservations.status, "confirmed"),
+        overlapsRange(startAt, endAt),
+        ignoreId ? ne(reservations.id, ignoreId) : undefined,
+      ),
+    )
+    .orderBy(asc(reservations.startAt))
+    .limit(1);
+
+  if (conflict) {
+    throw new DomainError(
+      "SLOT_TAKEN",
+      `This overlaps an existing reservation from ${formatTime(conflict.startAt)} to ${formatTime(conflict.endAt)}.`,
+    );
+  }
+}
+
+// BR16 (S2), against the capacity read from the locked resource row.
+function assertGroupFits(
+  attendeeCount: number | null,
+  capacity: number | null,
+): void {
+  const message = checkAttendeeCount(attendeeCount, capacity);
+  if (message) {
+    throw new DomainError("VALIDATION", message, { field: "attendeeCount" });
+  }
+}
+
 // M6 and M7. The owner is always the actor, never a value from the form.
 export async function createReservation(
   actor: AuthenticatedUser,
@@ -67,7 +119,10 @@ export async function createReservation(
         // here, and a deactivation (which takes the same lock) cannot slip
         // in between the active check and the insert.
         const [resource] = await tx
-          .select({ isActive: resources.isActive })
+          .select({
+            isActive: resources.isActive,
+            capacity: resources.capacity,
+          })
           .from(resources)
           .where(eq(resources.id, resourceId))
           .for("update");
@@ -83,31 +138,8 @@ export async function createReservation(
           );
         }
 
-        // For a helpful message only. The guarantee is the exclusion
-        // constraint, which refuses the insert even if this check is
-        // ever skipped.
-        const [conflict] = await tx
-          .select({
-            startAt: reservations.startAt,
-            endAt: reservations.endAt,
-          })
-          .from(reservations)
-          .where(
-            and(
-              eq(reservations.resourceId, resourceId),
-              eq(reservations.status, "confirmed"),
-              overlapsRange(startAt, endAt),
-            ),
-          )
-          .orderBy(asc(reservations.startAt))
-          .limit(1);
-
-        if (conflict) {
-          throw new DomainError(
-            "SLOT_TAKEN",
-            `This overlaps an existing reservation from ${formatTime(conflict.startAt)} to ${formatTime(conflict.endAt)}.`,
-          );
-        }
+        assertGroupFits(input.attendeeCount, resource.capacity);
+        await assertNoConflict(tx, resourceId, startAt, endAt);
 
         const [created] = await tx
           .insert(reservations)
@@ -115,6 +147,7 @@ export async function createReservation(
             resourceId,
             userId: actor.id,
             title: input.title,
+            attendeeCount: input.attendeeCount,
             startAt,
             endAt,
           })
@@ -128,6 +161,161 @@ export async function createReservation(
     // DomainError thrown above passes through unchanged.
     throw mapDbError(error) ?? error;
   }
+}
+
+// S1. The owner changes the date, times or title of a reservation that has
+// not started. The resource cannot change. Every create rule applies again
+// (BR24), and a refused edit leaves the reservation exactly as it was.
+export async function updateReservation(
+  actor: AuthenticatedUser,
+  reservationId: string,
+  input: ReservationInput,
+  now: Date = new Date(),
+): Promise<Reservation> {
+  const times = checkReservationTimes(input, now);
+  if (!times.ok) {
+    throw new DomainError("VALIDATION", times.violation.message, {
+      field: times.violation.field,
+    });
+  }
+  const { startAt, endAt } = times;
+  const notFound = () =>
+    new DomainError("NOT_FOUND", "That reservation does not exist.");
+
+  try {
+    return await withOneRetry(() =>
+      db.transaction(async (tx) => {
+        // Only to learn which resource to lock: a reservation's resource
+        // never changes, so this read needs no lock.
+        const [target] = await tx
+          .select({ resourceId: reservations.resourceId })
+          .from(reservations)
+          .where(eq(reservations.id, reservationId))
+          .limit(1);
+        if (!target) {
+          throw notFound();
+        }
+
+        // Lock order: resource row, then reservation row, as everywhere
+        // else, so concurrent operations cannot deadlock.
+        const [resource] = await tx
+          .select({
+            isActive: resources.isActive,
+            capacity: resources.capacity,
+          })
+          .from(resources)
+          .where(eq(resources.id, target.resourceId))
+          .for("update");
+        const [existing] = await tx
+          .select({
+            userId: reservations.userId,
+            status: reservations.status,
+            startAt: reservations.startAt,
+          })
+          .from(reservations)
+          .where(eq(reservations.id, reservationId))
+          .for("update");
+
+        // BR21: only the owner edits; an admin cancels instead. Someone
+        // else's reservation looks the same as a missing one.
+        if (!existing || existing.userId !== actor.id) {
+          throw notFound();
+        }
+        // BR22, checked on the locked row, so a cancellation that just
+        // committed is seen.
+        if (existing.status === "cancelled") {
+          throw new DomainError(
+            "ALREADY_CANCELLED",
+            "This reservation has been cancelled, so it can no longer be edited.",
+          );
+        }
+        if (hasStarted(existing.startAt, now)) {
+          throw new DomainError(
+            "ALREADY_STARTED",
+            "This reservation has already started, so it can no longer be edited.",
+          );
+        }
+        // BR12
+        if (!resource?.isActive) {
+          throw new DomainError(
+            "RESOURCE_INACTIVE",
+            "This resource is no longer available for booking.",
+          );
+        }
+
+        assertGroupFits(input.attendeeCount, resource.capacity);
+        await assertNoConflict(
+          tx,
+          target.resourceId,
+          startAt,
+          endAt,
+          reservationId,
+        );
+
+        const [updated] = await tx
+          .update(reservations)
+          .set({
+            title: input.title,
+            attendeeCount: input.attendeeCount,
+            startAt,
+            endAt,
+          })
+          .where(eq(reservations.id, reservationId))
+          .returning();
+
+        return updated;
+      }),
+    );
+  } catch (error) {
+    throw mapDbError(error) ?? error;
+  }
+}
+
+// A reservation as the edit form needs it (S1).
+export type EditableReservation = {
+  id: string;
+  title: string;
+  attendeeCount: number | null;
+  startAt: Date;
+  endAt: Date;
+  resourceId: string;
+  resourceName: string;
+  resourceCapacity: number | null;
+};
+
+// S1. The actor's own reservation, while it can still be edited: confirmed
+// and not yet started (BR21, BR22). Otherwise null, so someone else's
+// reservation looks the same as a missing one. Only for showing the form:
+// updateReservation re-checks everything inside its transaction.
+export async function getReservationForEdit(
+  actor: AuthenticatedUser,
+  reservationId: string,
+  now: Date = new Date(),
+): Promise<EditableReservation | null> {
+  const [reservation] = await db
+    .select({
+      id: reservations.id,
+      title: reservations.title,
+      attendeeCount: reservations.attendeeCount,
+      startAt: reservations.startAt,
+      endAt: reservations.endAt,
+      resourceId: resources.id,
+      resourceName: resources.name,
+      resourceCapacity: resources.capacity,
+    })
+    .from(reservations)
+    .innerJoin(resources, eq(resources.id, reservations.resourceId))
+    .where(
+      and(
+        eq(reservations.id, reservationId),
+        eq(reservations.userId, actor.id),
+        eq(reservations.status, "confirmed"),
+        gt(reservations.startAt, now),
+      ),
+    )
+    .limit(1);
+
+  return reservation ?? null;
 }
 
 // One of the actor's own reservations, as listed in "My reservations".

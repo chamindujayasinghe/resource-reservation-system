@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  checkAttendeeCount,
   checkReservationTimes,
   hasStarted,
   type ReservationTimesInput,
@@ -153,6 +154,26 @@ describe("checkReservationTimes", () => {
         field,
       });
     });
+  });
+});
+
+describe("checkAttendeeCount (BR16)", () => {
+  it("rejects more attendees than the capacity", () => {
+    expect(checkAttendeeCount(13, 12)).toBe(
+      "This resource holds at most 12 people.",
+    );
+  });
+
+  it("accepts attendees equal to the capacity", () => {
+    expect(checkAttendeeCount(12, 12)).toBeNull();
+  });
+
+  it("accepts any count when the resource has no capacity", () => {
+    expect(checkAttendeeCount(500, null)).toBeNull();
+  });
+
+  it("accepts a reservation that states no count", () => {
+    expect(checkAttendeeCount(null, 12)).toBeNull();
   });
 });
 

@@ -30,6 +30,7 @@ const booking = (start: string, end: string, title = "Team meeting") => ({
   start,
   end,
   title,
+  attendeeCount: null,
 });
 
 async function rowOf(id: string) {

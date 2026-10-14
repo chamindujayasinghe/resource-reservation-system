@@ -317,6 +317,7 @@ describe("admin operations", () => {
         start: "15:00",
         end: "16:00",
         title: "Retro",
+        attendeeCount: null,
       };
       await expect(
         createReservation(member, resourceId, booking, NOW),
@@ -349,6 +350,7 @@ describe("admin operations", () => {
         start: "13:00",
         end: "14:00",
         title: "Race",
+        attendeeCount: null,
       };
 
       for (let round = 0; round < ROUNDS; round++) {

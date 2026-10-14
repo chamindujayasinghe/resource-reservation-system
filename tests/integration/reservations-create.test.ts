@@ -30,6 +30,7 @@ const booking = (start: string, end: string, title = "Team meeting") => ({
   start,
   end,
   title,
+  attendeeCount: null,
 });
 
 async function confirmedCount(resourceId: string): Promise<number> {
@@ -212,6 +213,42 @@ describe("createReservation", () => {
         createReservation(member, resourceId, booking("06:30", "08:00"), NOW),
       ).rejects.toMatchObject({ code: "VALIDATION", field: "start" });
       expect(await confirmedCount(resourceId)).toBe(0);
+    });
+  });
+
+  describe("attendee count (S2, BR16)", () => {
+    const withAttendees = (attendeeCount: number) => ({
+      ...booking("09:00", "10:00"),
+      attendeeCount,
+    });
+
+    it("refuses more attendees than the capacity and saves nothing", async () => {
+      const room = await fixtures.createResource({ capacity: 6 });
+
+      await expect(
+        createReservation(member, room.id, withAttendees(7), NOW),
+      ).rejects.toMatchObject({
+        code: "VALIDATION",
+        field: "attendeeCount",
+        message: "This resource holds at most 6 people.",
+      });
+      expect(await confirmedCount(room.id)).toBe(0);
+    });
+
+    it("accepts attendees equal to the capacity and stores the count", async () => {
+      const room = await fixtures.createResource({ capacity: 6 });
+
+      await expect(
+        createReservation(member, room.id, withAttendees(6), NOW),
+      ).resolves.toMatchObject({ attendeeCount: 6 });
+    });
+
+    it("accepts any count when the resource has no capacity", async () => {
+      const projector = await fixtures.createResource({ capacity: null });
+
+      await expect(
+        createReservation(member, projector.id, withAttendees(40), NOW),
+      ).resolves.toMatchObject({ attendeeCount: 40 });
     });
   });
 });

@@ -617,27 +617,27 @@ The heart of the product. Do not start polish before this phase is committed.
 
 ### Phase 5: Admin operations (2 h)
 
-- [ ] `listAllReservations` with resource, status and date filters; `/admin/reservations`
-- [ ] Admin cancel with required reason; reason shown in the member's list
-- [ ] `deactivateResource` (cascade cancel) and `reactivateResource`
-- [ ] Deactivation dialog showing the upcoming-reservation count and consequences
-- [ ] Inactive handling on `/resources/[id]` (not-found for members, banner for admins)
-- [ ] Integration tests: deactivation cases and the deactivate-versus-book race
-- [ ] **Done when:** every Must-have story (M1 to M10) passes its acceptance criteria. Commit: *feat: admin reservation oversight and resource deactivation*
+- [x] `listAllReservations` with resource, status and date filters; `/admin/reservations`
+- [x] Admin cancel with required reason; reason shown in the member's list
+- [x] `deactivateResource` (cascade cancel) and `reactivateResource`
+- [x] Deactivation dialog showing the upcoming-reservation count and consequences
+- [x] Inactive handling on `/resources/[id]` (not-found for members, banner for admins)
+- [x] Integration tests: deactivation cases and the deactivate-versus-book race
+- [x] **Done when:** every Must-have story (M1 to M10) passes its acceptance criteria. Commit: *feat: admin reservation oversight and resource deactivation*
 
 ### Phase 6: Should-haves and polish (3.5 h)
 
-- [ ] Loading states on submit buttons; toasts on every mutation (S5)
-- [ ] `error.tsx`, `not-found.tsx`, and every empty state
-- [ ] Phone-width pass on all pages
-- [ ] Run the manual checklist (6.4) and fix what it finds
-- [ ] Remove dead code and scaffolding; lint, typecheck and tests clean
-- [ ] Edit reservation: service, page, tests (S1, 1.5 h) **[CUT-3]**
-- [ ] Attendee count field and capacity check (S2, 0.5 h; the column already exists) **[CUT-2]**
-- [ ] Any Could-have item (C1 to C4) **[CUT-1: assume none will be built]**
-- [ ] Past-day styling and "today" shortcut in the schedule **[CUT-4]**
-- [ ] Polish of the admin reservations filters beyond resource and status **[CUT-5]**
-- [ ] **Done when:** the app is in the state you will record. Commit: *feat: reservation editing and UX polish*
+- [x] Loading states on submit buttons; toasts on every mutation (S5)
+- [x] `error.tsx`, `not-found.tsx`, and every empty state
+- [x] Phone-width pass on all pages
+- [x] Run the manual checklist (6.4) and fix what it finds
+- [x] Remove dead code and scaffolding; lint, typecheck and tests clean
+- [x] Edit reservation: service, page, tests (S1, 1.5 h) **[CUT-3]**
+- [x] Attendee count field and capacity check (S2, 0.5 h; the column already exists) **[CUT-2]**
+- [ ] Any Could-have item (C1 to C4) **[CUT-1: assume none will be built]** (cut)
+- [x] Past-day styling and "today" shortcut in the schedule **[CUT-4]** (already built in Phase 4)
+- [ ] Polish of the admin reservations filters beyond resource and status **[CUT-5]** (cut)
+- [x] **Done when:** the app is in the state you will record. Commit: *feat: reservation editing and UX polish*
 
 ### Phase 7: Documentation and delivery (3 h)
 
