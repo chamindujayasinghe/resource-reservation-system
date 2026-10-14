@@ -115,6 +115,9 @@ export default async function ResourcePage({
             <div className="flex flex-col gap-2">
               <Label htmlFor="schedule-date">Go to date</Label>
               <Input
+                // Previous/Next keep this page mounted; a new key per day
+                // makes the field show the day being displayed.
+                key={date}
                 id="schedule-date"
                 name="date"
                 type="date"

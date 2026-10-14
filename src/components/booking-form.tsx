@@ -108,7 +108,11 @@ export function BookingForm({
 
       <div className="grid grid-cols-2 gap-3">
         <FormField label="Start" htmlFor="start" error={fieldError("start")}>
+          {/* React resets the form after the action, and a select only reads
+              defaultValue when it is created. The key recreates it with the
+              submitted value, so the choice survives a refusal. */}
           <NativeSelect
+            key={values.start}
             id="start"
             name="start"
             required
@@ -129,6 +133,7 @@ export function BookingForm({
 
         <FormField label="End" htmlFor="end" error={fieldError("end")}>
           <NativeSelect
+            key={values.end}
             id="end"
             name="end"
             required

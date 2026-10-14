@@ -643,7 +643,7 @@ The heart of the product. Do not start polish before this phase is committed.
 
 - [ ] README (section 10.1), about 1 h
 - [ ] ER diagram on dbdiagram.io; copy the share link; export an image into `docs/` for the README
-- [ ] **Fresh-clone test:** clone into a new folder and follow only the README from zero to a seeded, running app. Fix the README, not your memory.
+- [x] **Fresh-clone test:** clone into a new folder and follow only the README from zero to a seeded, running app. Fix the README, not your memory.
 - [ ] Rehearse the video once with a timer; record; check audio and length (3 to 5 minutes), about 1 h including a retake
 - [ ] Upload the video; open the video, repository and ER links in a private window to confirm they are accessible without your login
 - [ ] Final commit and push; confirm the default branch on GitHub shows the latest commit
