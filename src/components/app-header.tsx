@@ -5,7 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { AuthenticatedUser } from "@/server/services/users";
 
-const NAV_LINKS = [{ href: "/resources", label: "Resources" }];
+const NAV_LINKS = [
+  { href: "/resources", label: "Resources" },
+  { href: "/reservations", label: "My reservations" },
+];
 
 const ADMIN_NAV_LINKS = [
   { href: "/admin/resources", label: "Manage resources" },

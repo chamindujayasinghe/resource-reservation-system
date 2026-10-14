@@ -3,8 +3,14 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/server/auth/session";
-import { createReservation } from "@/server/services/reservations";
-import { reservationInputSchema } from "@/validation/reservations";
+import {
+  cancelReservation,
+  createReservation,
+} from "@/server/services/reservations";
+import {
+  reservationIdSchema,
+  reservationInputSchema,
+} from "@/validation/reservations";
 import { resourceIdSchema } from "@/validation/resources";
 
 import {
@@ -56,4 +62,40 @@ export async function createReservationAction(
     revalidatePath(`/resources/${parsedResourceId.data}`);
     return domainFailure(error, values);
   }
+}
+
+export type CancelReservationState = ActionState;
+
+// M9. The page binds the reservation id. The form carries no fields, so the
+// previous state and form data React also passes are not needed.
+export async function cancelReservationAction(
+  reservationId: string,
+): Promise<CancelReservationState> {
+  const actor = await requireUser();
+
+  const parsedId = reservationIdSchema.safeParse(reservationId);
+  if (!parsedId.success) {
+    return {
+      ok: false,
+      error: { message: "That reservation does not exist." },
+    };
+  }
+
+  try {
+    await cancelReservation(actor, parsedId.data);
+    revalidateAfterCancel();
+    return { ok: true, data: undefined };
+  } catch (error) {
+    // "Already cancelled" or "already started" means the page was out of
+    // date, so refresh it as well.
+    revalidateAfterCancel();
+    return domainFailure(error, {});
+  }
+}
+
+// My reservations, and every resource schedule: the freed slot must show
+// as free wherever it is displayed.
+function revalidateAfterCancel(): void {
+  revalidatePath("/reservations");
+  revalidatePath("/resources/[id]", "page");
 }

@@ -129,6 +129,114 @@ export async function createReservation(
   }
 }
 
+// One of the actor's own reservations, as listed in "My reservations".
+export type MyReservation = {
+  id: string;
+  title: string;
+  startAt: Date;
+  endAt: Date;
+  status: Reservation["status"];
+  cancellationReason: string | null;
+  cancelledByOwner: boolean;
+  resourceId: string;
+  resourceName: string;
+};
+
+export type MyReservations = {
+  upcoming: MyReservation[];
+  past: MyReservation[];
+  cancelled: MyReservation[];
+};
+
+// M8. "Upcoming" and "past" are derived from the current time, never stored
+// (scope assumption 13). An in-progress reservation counts as upcoming.
+export async function listMyReservations(
+  actor: AuthenticatedUser,
+  now: Date = new Date(),
+): Promise<MyReservations> {
+  const rows = await db
+    .select({
+      id: reservations.id,
+      title: reservations.title,
+      startAt: reservations.startAt,
+      endAt: reservations.endAt,
+      status: reservations.status,
+      cancelledBy: reservations.cancelledBy,
+      cancellationReason: reservations.cancellationReason,
+      resourceId: resources.id,
+      resourceName: resources.name,
+    })
+    .from(reservations)
+    .innerJoin(resources, eq(resources.id, reservations.resourceId))
+    .where(eq(reservations.userId, actor.id))
+    .orderBy(asc(reservations.startAt));
+
+  const mine: MyReservation[] = rows.map(({ cancelledBy, ...row }) => ({
+    ...row,
+    cancelledByOwner: cancelledBy === actor.id,
+  }));
+  const hasEnded = (r: MyReservation) => r.endAt.getTime() <= now.getTime();
+
+  return {
+    upcoming: mine.filter((r) => r.status === "confirmed" && !hasEnded(r)),
+    past: mine.filter((r) => r.status === "confirmed" && hasEnded(r)).reverse(),
+    cancelled: mine.filter((r) => r.status === "cancelled").reverse(),
+  };
+}
+
+// M9: the owner cancels a reservation that has not started. One conditional
+// update, so a double click or a second tab cannot cancel twice: the second
+// attempt matches no row and is told why. The row is kept (BR26).
+export async function cancelReservation(
+  actor: AuthenticatedUser,
+  reservationId: string,
+  now: Date = new Date(),
+): Promise<void> {
+  const cancelled = await db
+    .update(reservations)
+    .set({ status: "cancelled", cancelledAt: now, cancelledBy: actor.id })
+    .where(
+      and(
+        eq(reservations.id, reservationId),
+        eq(reservations.userId, actor.id),
+        eq(reservations.status, "confirmed"),
+        gt(reservations.startAt, now),
+      ),
+    )
+    .returning({ id: reservations.id });
+
+  if (cancelled.length > 0) {
+    return;
+  }
+
+  // Nothing changed: find out why, to give a useful message.
+  const [existing] = await db
+    .select({
+      userId: reservations.userId,
+      status: reservations.status,
+    })
+    .from(reservations)
+    .where(eq(reservations.id, reservationId))
+    .limit(1);
+
+  // Someone else's reservation looks the same as a missing one, so ids
+  // cannot be probed.
+  if (!existing || existing.userId !== actor.id) {
+    throw new DomainError("NOT_FOUND", "That reservation does not exist.");
+  }
+  if (existing.status === "cancelled") {
+    throw new DomainError(
+      "ALREADY_CANCELLED",
+      "This reservation is already cancelled.",
+    );
+  }
+  // BR22
+  throw new DomainError(
+    "ALREADY_STARTED",
+    "This reservation has already started, so it can no longer be cancelled.",
+  );
+}
+
 // M5. The resource and its confirmed bookings on one calendar day in the
 // organization's time zone, or null if the actor may not see the resource.
 export async function getDaySchedule(

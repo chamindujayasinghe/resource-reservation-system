@@ -590,30 +590,30 @@ This phase de-risks the most important thing in the project first.
 
 ### Phase 3: Resources (2.5 h)
 
-- [ ] Zod schemas for resource input
-- [ ] Resource service: `listResources`, `getResource`, `createResource`, `updateResource` with admin checks and name-uniqueness mapping
-- [ ] `/resources`: cards, type filter, name search, empty state
-- [ ] `/admin/resources`: table including inactive, status badge
-- [ ] `/admin/resources/new` and `/admin/resources/[id]/edit` sharing one form component with field errors
-- [ ] `action-state.ts`: shared `ActionState` type and error-to-state helper
-- [ ] Integration tests: admin-only enforcement, duplicate name
-- [ ] **Done when:** an admin can create and edit resources and a member can browse and filter them. Commit: *feat: resource catalogue and admin management*
+- [x] Zod schemas for resource input
+- [x] Resource service: `listResources`, `getResource`, `createResource`, `updateResource` with admin checks and name-uniqueness mapping
+- [x] `/resources`: cards, type filter, name search, empty state
+- [x] `/admin/resources`: table including inactive, status badge
+- [x] `/admin/resources/new` and `/admin/resources/[id]/edit` sharing one form component with field errors
+- [x] `action-state.ts`: shared `ActionState` type and error-to-state helper
+- [x] Integration tests: admin-only enforcement, duplicate name
+- [x] **Done when:** an admin can create and edit resources and a member can browse and filter them. Commit: *feat: resource catalogue and admin management*
 
 ### Phase 4: Reservations core (4 h)
 
 The heart of the product. Do not start polish before this phase is committed.
 
-- [ ] `domain/config.ts`, `domain/time.ts`, `domain/reservation-rules.ts`
-- [ ] Unit tests for all rules (section 6.1)
-- [ ] `createReservation` service with the transaction in 3.4 and error mapping
-- [ ] Integration tests, group B (10 parallel requests) and create cases from group C
-- [ ] `getDaySchedule`; `/resources/[id]` with 30-minute rows, booked blocks showing owner and title, date navigation
-- [ ] Booking form: date, start and end dropdowns, title; field errors; preserved input; success toast; schedule refreshes
-- [ ] `listMyReservations`; `/reservations` with upcoming, past and cancelled groups
-- [ ] `cancelReservation` service (owner path) with confirmation dialog
-- [ ] Integration tests: cancel cases
-- [ ] Manual check: two browsers, two members, same slot
-- [ ] **Done when:** a member can book, see and cancel reservations, and the concurrency test passes. Commit in two or three steps, ending with *feat: reservations with conflict prevention*
+- [x] `domain/config.ts`, `domain/time.ts`, `domain/reservation-rules.ts`
+- [x] Unit tests for all rules (section 6.1)
+- [x] `createReservation` service with the transaction in 3.4 and error mapping
+- [x] Integration tests, group B (10 parallel requests) and create cases from group C
+- [x] `getDaySchedule`; `/resources/[id]` with 30-minute rows, booked blocks showing owner and title, date navigation
+- [x] Booking form: date, start and end dropdowns, title; field errors; preserved input; success toast; schedule refreshes
+- [x] `listMyReservations`; `/reservations` with upcoming, past and cancelled groups
+- [x] `cancelReservation` service (owner path) with confirmation dialog
+- [x] Integration tests: cancel cases
+- [x] Manual check: two browsers, two members, same slot
+- [x] **Done when:** a member can book, see and cancel reservations, and the concurrency test passes. Commit in two or three steps, ending with *feat: reservations with conflict prevention*
 
 ### Phase 5: Admin operations (2 h)
 
