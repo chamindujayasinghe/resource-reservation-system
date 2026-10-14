@@ -12,6 +12,7 @@ const NAV_LINKS = [
 
 const ADMIN_NAV_LINKS = [
   { href: "/admin/resources", label: "Manage resources" },
+  { href: "/admin/reservations", label: "All reservations" },
 ];
 
 export function AppHeader({ user }: { user: AuthenticatedUser }) {

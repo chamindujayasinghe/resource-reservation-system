@@ -1,12 +1,13 @@
 import { and, asc, eq, gt, lt } from "drizzle-orm";
 
-import { checkReservationTimes } from "@/domain/reservation-rules";
+import { checkReservationTimes, hasStarted } from "@/domain/reservation-rules";
 import { dayBoundsUtc, formatTime } from "@/domain/time";
 import { db } from "@/server/db/client";
 import { reservations, resources, users } from "@/server/db/schema";
 import { DomainError, findPgError, mapDbError } from "@/server/errors";
 import type { ReservationInput } from "@/validation/reservations";
 
+import { assertAdmin } from "./authorization";
 import { getResource, type Resource } from "./resources";
 import type { AuthenticatedUser } from "./users";
 
@@ -184,21 +185,107 @@ export async function listMyReservations(
   };
 }
 
-// M9: the owner cancels a reservation that has not started. One conditional
-// update, so a double click or a second tab cannot cancel twice: the second
-// attempt matches no row and is told why. The row is kept (BR26).
+// A row of the admin's list of all reservations (M10).
+export type AdminReservationRow = {
+  id: string;
+  title: string;
+  startAt: Date;
+  endAt: Date;
+  status: Reservation["status"];
+  cancellationReason: string | null;
+  resourceId: string;
+  resourceName: string;
+  ownerName: string;
+};
+
+export const ADMIN_LIST_LIMIT = 100;
+
+// M10. Admin only. Reservations overlapping a range of calendar days in the
+// organization's time zone, optionally for one resource or status. At most
+// ADMIN_LIST_LIMIT rows; hasMore says the filters should be narrowed.
+export async function listAllReservations(
+  actor: AuthenticatedUser,
+  filters: {
+    resourceId?: string;
+    status?: Reservation["status"];
+    from: string;
+    to: string;
+  },
+): Promise<{ rows: AdminReservationRow[]; hasMore: boolean }> {
+  assertAdmin(actor);
+
+  // A reversed range is swapped rather than returning nothing.
+  const [firstDay, lastDay] =
+    filters.from <= filters.to
+      ? [filters.from, filters.to]
+      : [filters.to, filters.from];
+  const rangeStart = dayBoundsUtc(firstDay).start;
+  const rangeEnd = dayBoundsUtc(lastDay).end;
+
+  const rows = await db
+    .select({
+      id: reservations.id,
+      title: reservations.title,
+      startAt: reservations.startAt,
+      endAt: reservations.endAt,
+      status: reservations.status,
+      cancellationReason: reservations.cancellationReason,
+      resourceId: resources.id,
+      resourceName: resources.name,
+      ownerName: users.name,
+    })
+    .from(reservations)
+    .innerJoin(resources, eq(resources.id, reservations.resourceId))
+    .innerJoin(users, eq(users.id, reservations.userId))
+    .where(
+      and(
+        overlapsRange(rangeStart, rangeEnd),
+        filters.resourceId
+          ? eq(reservations.resourceId, filters.resourceId)
+          : undefined,
+        filters.status ? eq(reservations.status, filters.status) : undefined,
+      ),
+    )
+    .orderBy(asc(reservations.startAt), asc(resources.name))
+    // One extra row tells us whether there are more than the limit.
+    .limit(ADMIN_LIST_LIMIT + 1);
+
+  return {
+    rows: rows.slice(0, ADMIN_LIST_LIMIT),
+    hasMore: rows.length > ADMIN_LIST_LIMIT,
+  };
+}
+
+// M9 and M10. The owner may cancel their own reservation; an admin may cancel
+// anyone's, but must give a reason when it is not their own (BR23). Only a
+// reservation that has not started can be cancelled (BR22).
+//
+// One conditional update, so a double click, a second tab, or an owner and an
+// admin at the same moment cannot cancel twice: the second attempt matches no
+// row and is told why. The row is kept with who, when and why (BR26).
 export async function cancelReservation(
   actor: AuthenticatedUser,
   reservationId: string,
+  options: { reason?: string | null } = {},
   now: Date = new Date(),
 ): Promise<void> {
+  const reason = options.reason?.trim() || null;
+  const isAdmin = actor.role === "admin";
+  // Without a reason, even an admin can only cancel their own reservation.
+  const mayCancelOthers = isAdmin && reason !== null;
+
   const cancelled = await db
     .update(reservations)
-    .set({ status: "cancelled", cancelledAt: now, cancelledBy: actor.id })
+    .set({
+      status: "cancelled",
+      cancelledAt: now,
+      cancelledBy: actor.id,
+      cancellationReason: reason,
+    })
     .where(
       and(
         eq(reservations.id, reservationId),
-        eq(reservations.userId, actor.id),
+        mayCancelOthers ? undefined : eq(reservations.userId, actor.id),
         eq(reservations.status, "confirmed"),
         gt(reservations.startAt, now),
       ),
@@ -214,14 +301,16 @@ export async function cancelReservation(
     .select({
       userId: reservations.userId,
       status: reservations.status,
+      startAt: reservations.startAt,
     })
     .from(reservations)
     .where(eq(reservations.id, reservationId))
     .limit(1);
+  const isOwn = existing?.userId === actor.id;
 
-  // Someone else's reservation looks the same as a missing one, so ids
-  // cannot be probed.
-  if (!existing || existing.userId !== actor.id) {
+  // To a member, someone else's reservation looks the same as a missing one,
+  // so ids cannot be probed.
+  if (!existing || (!isOwn && !isAdmin)) {
     throw new DomainError("NOT_FOUND", "That reservation does not exist.");
   }
   if (existing.status === "cancelled") {
@@ -230,10 +319,17 @@ export async function cancelReservation(
       "This reservation is already cancelled.",
     );
   }
-  // BR22
+  if (hasStarted(existing.startAt, now)) {
+    throw new DomainError(
+      "ALREADY_STARTED",
+      "This reservation has already started, so it can no longer be cancelled.",
+    );
+  }
+  // The only case left: an admin cancelling someone else's without a reason.
   throw new DomainError(
-    "ALREADY_STARTED",
-    "This reservation has already started, so it can no longer be cancelled.",
+    "VALIDATION",
+    "Give a reason. The owner will see it in their reservations.",
+    { field: "reason" },
   );
 }
 

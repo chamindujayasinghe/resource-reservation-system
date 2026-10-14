@@ -3,7 +3,12 @@
 import { revalidatePath } from "next/cache";
 
 import { requireUser } from "@/server/auth/session";
-import { createResource, updateResource } from "@/server/services/resources";
+import {
+  createResource,
+  deactivateResource,
+  reactivateResource,
+  updateResource,
+} from "@/server/services/resources";
 import { resourceIdSchema, resourceInputSchema } from "@/validation/resources";
 
 import {
@@ -77,5 +82,59 @@ export async function updateResourceAction(
     return { ok: true, data: { id: resource.id } };
   } catch (error) {
     return domainFailure(error, values);
+  }
+}
+
+const RESOURCE_NOT_FOUND: ActionState<never> = {
+  ok: false,
+  error: { message: "That resource no longer exists." },
+};
+
+// Everything that shows a resource or its reservations.
+function revalidateAfterStatusChange(): void {
+  revalidateResourcePages();
+  revalidatePath("/resources/[id]", "page");
+  revalidatePath("/reservations");
+  revalidatePath("/admin/reservations");
+}
+
+export type DeactivateResourceState = ActionState<{ cancelledCount: number }>;
+
+// M4. The page binds the resource id; the dialog has no fields.
+export async function deactivateResourceAction(
+  resourceId: string,
+): Promise<DeactivateResourceState> {
+  const actor = await requireUser();
+
+  const parsedId = resourceIdSchema.safeParse(resourceId);
+  if (!parsedId.success) {
+    return RESOURCE_NOT_FOUND;
+  }
+
+  try {
+    const { cancelledCount } = await deactivateResource(actor, parsedId.data);
+    revalidateAfterStatusChange();
+    return { ok: true, data: { cancelledCount } };
+  } catch (error) {
+    return domainFailure(error, {});
+  }
+}
+
+export async function reactivateResourceAction(
+  resourceId: string,
+): Promise<ActionState> {
+  const actor = await requireUser();
+
+  const parsedId = resourceIdSchema.safeParse(resourceId);
+  if (!parsedId.success) {
+    return RESOURCE_NOT_FOUND;
+  }
+
+  try {
+    await reactivateResource(actor, parsedId.data);
+    revalidateAfterStatusChange();
+    return { ok: true, data: undefined };
+  } catch (error) {
+    return domainFailure(error, {});
   }
 }

@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 
 import { requireUser } from "@/server/auth/session";
 import {
@@ -8,6 +9,7 @@ import {
   createReservation,
 } from "@/server/services/reservations";
 import {
+  cancellationReasonSchema,
   reservationIdSchema,
   reservationInputSchema,
 } from "@/validation/reservations";
@@ -93,9 +95,47 @@ export async function cancelReservationAction(
   }
 }
 
-// My reservations, and every resource schedule: the freed slot must show
-// as free wherever it is displayed.
+const adminCancelSchema = z.object({ reason: cancellationReasonSchema });
+
+// M10. An admin cancels any upcoming reservation. The form carries the
+// reason; the service decides whether one is required (BR23).
+export async function adminCancelReservationAction(
+  reservationId: string,
+  _previous: CancelReservationState,
+  formData: FormData,
+): Promise<CancelReservationState> {
+  const actor = await requireUser();
+  const values = readFormValues(formData, ["reason"]);
+
+  const parsedId = reservationIdSchema.safeParse(reservationId);
+  if (!parsedId.success) {
+    return {
+      ok: false,
+      error: { message: "That reservation does not exist.", values },
+    };
+  }
+
+  const parsed = adminCancelSchema.safeParse(values);
+  if (!parsed.success) {
+    return validationFailure(parsed.error, values);
+  }
+
+  try {
+    await cancelReservation(actor, parsedId.data, {
+      reason: parsed.data.reason,
+    });
+    revalidateAfterCancel();
+    return { ok: true, data: undefined };
+  } catch (error) {
+    revalidateAfterCancel();
+    return domainFailure(error, values);
+  }
+}
+
+// Both reservation lists and every resource schedule: the freed slot must
+// show as free wherever it is displayed.
 function revalidateAfterCancel(): void {
   revalidatePath("/reservations");
+  revalidatePath("/admin/reservations");
   revalidatePath("/resources/[id]", "page");
 }

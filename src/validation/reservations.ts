@@ -26,3 +26,27 @@ export const scheduleSearchSchema = z.object({
 });
 
 export const reservationIdSchema = z.uuid();
+
+// ?resource=&status=&from=&to= on the admin reservation list (M10). Each
+// invalid value is dropped on its own; the page supplies the default range.
+export const adminReservationFiltersSchema = z.object({
+  resource: z.uuid().optional().catch(undefined),
+  status: z.enum(["confirmed", "cancelled"]).optional().catch(undefined),
+  from: z.string().refine(isValidCalendarDate).optional().catch(undefined),
+  to: z.string().refine(isValidCalendarDate).optional().catch(undefined),
+});
+
+export type AdminReservationFilters = z.output<
+  typeof adminReservationFiltersSchema
+>;
+
+// May be empty: whether a reason is required depends on who is cancelling
+// whose reservation (BR23), which the service decides.
+export const cancellationReasonSchema = z
+  .string()
+  .trim()
+  .max(200, "Use 200 characters or fewer.")
+  .refine(
+    (reason) => reason === "" || reason.length >= 3,
+    "Use at least 3 characters.",
+  );

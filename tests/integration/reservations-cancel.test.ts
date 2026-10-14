@@ -55,7 +55,7 @@ describe("cancelReservation (owner, M9)", () => {
   });
 
   it("cancels, keeps the record, and frees the slot immediately", async () => {
-    await cancelReservation(owner, reservationId, NOW);
+    await cancelReservation(owner, reservationId, {}, NOW);
 
     expect(await rowOf(reservationId)).toMatchObject({
       status: "cancelled",
@@ -71,19 +71,19 @@ describe("cancelReservation (owner, M9)", () => {
   });
 
   it("refuses a second cancel and keeps the first cancellation's details", async () => {
-    await cancelReservation(owner, reservationId, NOW);
+    await cancelReservation(owner, reservationId, {}, NOW);
     const later = wallTimeToUtc("2030-01-14", "08:30");
 
     await expect(
-      cancelReservation(owner, reservationId, later),
+      cancelReservation(owner, reservationId, {}, later),
     ).rejects.toMatchObject({ code: "ALREADY_CANCELLED" });
     expect((await rowOf(reservationId)).cancelledAt).toEqual(NOW);
   });
 
   it("lets only one of two simultaneous cancels take effect", async () => {
     const results = await Promise.allSettled([
-      cancelReservation(owner, reservationId, NOW),
-      cancelReservation(owner, reservationId, NOW),
+      cancelReservation(owner, reservationId, {}, NOW),
+      cancelReservation(owner, reservationId, {}, NOW),
     ]);
 
     const codes = results.map((r) =>
@@ -100,7 +100,7 @@ describe("cancelReservation (owner, M9)", () => {
     const atStart = wallTimeToUtc(DATE, "09:00");
 
     await expect(
-      cancelReservation(owner, reservationId, atStart),
+      cancelReservation(owner, reservationId, {}, atStart),
     ).rejects.toMatchObject({ code: "ALREADY_STARTED" });
     expect((await rowOf(reservationId)).status).toBe("confirmed");
   });
@@ -109,14 +109,14 @@ describe("cancelReservation (owner, M9)", () => {
     const other = await createMember();
 
     await expect(
-      cancelReservation(other, reservationId, NOW),
+      cancelReservation(other, reservationId, {}, NOW),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
     expect((await rowOf(reservationId)).status).toBe("confirmed");
   });
 
   it("reports NOT_FOUND for an unknown id", async () => {
     await expect(
-      cancelReservation(owner, randomUUID(), NOW),
+      cancelReservation(owner, randomUUID(), {}, NOW),
     ).rejects.toMatchObject({ code: "NOT_FOUND" });
   });
 });
@@ -140,7 +140,7 @@ describe("listMyReservations (M8)", () => {
     await create(me, "14:00", "15:00", "Client call");
     const toCancel = await create(me, "16:00", "17:00", "Cancelled one");
     await create(someoneElse, "12:00", "13:00", "Not mine");
-    await cancelReservation(me, toCancel.id, NOW);
+    await cancelReservation(me, toCancel.id, {}, NOW);
 
     // 11:30 on the day: the 09:00 meeting has ended, 11:00 is in progress.
     const midMorning = wallTimeToUtc(DATE, "11:30");
