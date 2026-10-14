@@ -24,6 +24,7 @@ export const resourceType = pgEnum("resource_type", [
   "vehicle",
   "other",
 ]);
+export type ResourceType = (typeof resourceType.enumValues)[number];
 
 export const reservationStatus = pgEnum("reservation_status", [
   "confirmed",
