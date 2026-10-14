@@ -20,6 +20,25 @@ export type AuthenticatedUser = {
 // wrong password take about the same time to reject.
 const UNKNOWN_USER_HASH = hashSync(randomUUID(), 10);
 
+// The user as currently stored, or null if the id no longer exists (for
+// example, a session cookie issued before the database was reset).
+export async function findUserById(
+  id: string,
+): Promise<AuthenticatedUser | null> {
+  const rows = await db
+    .select({
+      id: users.id,
+      name: users.name,
+      email: users.email,
+      role: users.role,
+    })
+    .from(users)
+    .where(eq(users.id, id))
+    .limit(1);
+
+  return rows.at(0) ?? null;
+}
+
 // Returns the user if the email exists and the password matches, else null.
 // The caller cannot tell which of the two was wrong (M1).
 export async function verifyCredentials(

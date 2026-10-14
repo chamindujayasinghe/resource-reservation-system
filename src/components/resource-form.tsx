@@ -6,10 +6,10 @@ import { useActionState, useEffect } from "react";
 import { toast } from "sonner";
 
 import type { ResourceActionState } from "@/actions/resources";
+import { FormField } from "@/components/form-field";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { RESOURCE_TYPE_OPTIONS } from "@/lib/resource-types";
@@ -64,7 +64,7 @@ export function ResourceForm({
         </Alert>
       ) : null}
 
-      <Field label="Name" htmlFor="name" error={fieldError("name")}>
+      <FormField label="Name" htmlFor="name" error={fieldError("name")}>
         <Input
           id="name"
           name="name"
@@ -74,9 +74,9 @@ export function ResourceForm({
           aria-invalid={Boolean(fieldError("name"))}
           aria-describedby={fieldError("name") ? "name-error" : undefined}
         />
-      </Field>
+      </FormField>
 
-      <Field label="Type" htmlFor="type" error={fieldError("type")}>
+      <FormField label="Type" htmlFor="type" error={fieldError("type")}>
         <NativeSelect
           id="type"
           name="type"
@@ -94,9 +94,13 @@ export function ResourceForm({
             </option>
           ))}
         </NativeSelect>
-      </Field>
+      </FormField>
 
-      <Field label="Location" htmlFor="location" error={fieldError("location")}>
+      <FormField
+        label="Location"
+        htmlFor="location"
+        error={fieldError("location")}
+      >
         <Input
           id="location"
           name="location"
@@ -109,9 +113,9 @@ export function ResourceForm({
             fieldError("location") ? "location-error" : undefined
           }
         />
-      </Field>
+      </FormField>
 
-      <Field
+      <FormField
         label="Capacity (optional)"
         htmlFor="capacity"
         hint="Seats or passengers. Leave empty for equipment."
@@ -131,9 +135,9 @@ export function ResourceForm({
             fieldError("capacity") ? "capacity-error" : "capacity-hint"
           }
         />
-      </Field>
+      </FormField>
 
-      <Field
+      <FormField
         label="Description (optional)"
         htmlFor="description"
         error={fieldError("description")}
@@ -149,7 +153,7 @@ export function ResourceForm({
             fieldError("description") ? "description-error" : undefined
           }
         />
-      </Field>
+      </FormField>
 
       <div className="flex gap-3">
         <Button type="submit" disabled={isPending}>
@@ -160,38 +164,5 @@ export function ResourceForm({
         </Button>
       </div>
     </form>
-  );
-}
-
-// Label, input, optional hint and error message, kept together so every
-// field is laid out and announced the same way.
-function Field({
-  label,
-  htmlFor,
-  hint,
-  error,
-  children,
-}: {
-  label: string;
-  htmlFor: string;
-  hint?: string;
-  error?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={htmlFor}>{label}</Label>
-      {children}
-      {hint && !error ? (
-        <p id={`${htmlFor}-hint`} className="text-sm text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
-      {error ? (
-        <p id={`${htmlFor}-error`} className="text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
-    </div>
   );
 }

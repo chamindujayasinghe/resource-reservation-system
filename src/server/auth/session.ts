@@ -2,26 +2,27 @@ import { notFound, redirect } from "next/navigation";
 import { cache } from "react";
 import { z } from "zod";
 
-import { userRole } from "@/server/db/schema";
-import type { AuthenticatedUser } from "@/server/services/users";
+import { findUserById, type AuthenticatedUser } from "@/server/services/users";
 
 import { auth } from "./config";
 
-const sessionUserSchema = z.object({
-  id: z.string().min(1),
-  name: z.string(),
-  email: z.string(),
-  role: z.enum(userRole.enumValues),
-});
+const sessionUserIdSchema = z.uuid();
 
-// The signed-in user, or null. Cached for the duration of one request, so a
-// layout and a page asking separately read the session only once.
+// The signed-in user, or null. Only the id is taken from the session cookie;
+// the user is then loaded from the database, so a cookie for a user who no
+// longer exists (after a database reset) counts as signed out, and name and
+// role are always current. Cached for the duration of one request, so a
+// layout and a page asking separately cost one lookup.
 export const getCurrentUser = cache(
   async (): Promise<AuthenticatedUser | null> => {
     const session = await auth();
-    const parsed = sessionUserSchema.safeParse(session?.user);
+    const userId = sessionUserIdSchema.safeParse(session?.user?.id);
 
-    return parsed.success ? parsed.data : null;
+    if (!userId.success) {
+      return null;
+    }
+
+    return findUserById(userId.data);
   },
 );
 

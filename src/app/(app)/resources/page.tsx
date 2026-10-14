@@ -87,24 +87,29 @@ export default async function ResourcesPage({
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {resources.map((resource) => (
             <li key={resource.id}>
-              <Card className="h-full">
-                <CardHeader>
-                  <CardTitle>{resource.name}</CardTitle>
-                  <CardDescription>
-                    {resourceTypeLabel(resource.type)} · {resource.location}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="flex flex-col gap-1 text-sm">
-                  {resource.capacity ? (
-                    <p>Capacity: {resource.capacity}</p>
-                  ) : null}
-                  {resource.description ? (
-                    <p className="line-clamp-2 text-muted-foreground">
-                      {resource.description}
-                    </p>
-                  ) : null}
-                </CardContent>
-              </Card>
+              <Link
+                href={`/resources/${resource.id}`}
+                className="block h-full rounded-xl focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
+                <Card className="h-full transition-colors hover:border-foreground/30">
+                  <CardHeader>
+                    <CardTitle>{resource.name}</CardTitle>
+                    <CardDescription>
+                      {resourceTypeLabel(resource.type)} · {resource.location}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-col gap-1 text-sm">
+                    {resource.capacity ? (
+                      <p>Capacity: {resource.capacity}</p>
+                    ) : null}
+                    {resource.description ? (
+                      <p className="line-clamp-2 text-muted-foreground">
+                        {resource.description}
+                      </p>
+                    ) : null}
+                  </CardContent>
+                </Card>
+              </Link>
             </li>
           ))}
         </ul>
