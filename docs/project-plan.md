@@ -574,7 +574,7 @@ This phase de-risks the most important thing in the project first.
 - [x] Integration tests, group A (constraint on its own), including the two-connection concurrent test
 - [x] `server/errors.ts`: `DomainError`, `mapDbError`; test that real `23P01` and `23505` errors are recognized through the ORM
 - [x] Seed script (section 8.4)
-- [ ] Paste the DBML into dbdiagram.io and check it matches the migration [CUT-6: can move to Phase 7]
+- [x] Paste the DBML into dbdiagram.io and check it matches the migration [CUT-6: can move to Phase 7]
 - [x] **Done when:** `npm test` is green and the seeded data is visible in the database. Commit: *feat: schema with database-level overlap prevention and seed data*
 
 ### Phase 2: Authentication and roles (2 h, hard timebox)
@@ -641,8 +641,8 @@ The heart of the product. Do not start polish before this phase is committed.
 
 ### Phase 7: Documentation and delivery (3 h)
 
-- [ ] README (section 10.1), about 1 h
-- [ ] ER diagram on dbdiagram.io; copy the share link; export an image into `docs/` for the README
+- [x] README (section 10.1), about 1 h
+- [x] ER diagram on dbdiagram.io; copy the share link; export an image into `docs/` for the README
 - [x] **Fresh-clone test:** clone into a new folder and follow only the README from zero to a seeded, running app. Fix the README, not your memory.
 - [ ] Rehearse the video once with a timer; record; check audio and length (3 to 5 minutes), about 1 h including a retake
 - [ ] Upload the video; open the video, repository and ER links in a private window to confirm they are accessible without your login
